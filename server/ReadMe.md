@@ -26,7 +26,7 @@
 
    * templates
      * index.html：测试上传图片用
-   * upload：上传的图片会被重命名并保存在此文件夹中
+   * upload：上传的图片会被保存在此文件夹中
    * server.py：server api文件，可运行
    * strUtil.py：辅助文件
 
