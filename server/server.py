@@ -12,7 +12,11 @@ import base64
 from flask_cors import CORS
 import matplotlib.pyplot as plt # plt 用于显示图片
 import matplotlib.image as mpimg # mpimg 用于读取图片
+from PIL import Image
 from urllib.request import urlretrieve
+from utils import *  # 调用network有关函数
+import torch
+import torch.nn as nn
 
 app = Flask(__name__)
 
@@ -22,6 +26,18 @@ CORS(app, supports_credentials=True, resources=r'/*')
 
 UPLOAD_FOLDER = 'upload'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+SA_RESULT_FOLDER = 'result/sa'
+app.config['SA_RESULT_FOLDER'] = SA_RESULT_FOLDER
+
+BOKEH_RESULT_FOLDER = 'result/bokeh'
+app.config['BOKEH_RESULT_FOLDER'] = BOKEH_RESULT_FOLDER
+
+CUTOUT_RESULT_FOLDER = 'result/cutout'
+app.config['CUTOUT_RESULT_FOLDER'] = CUTOUT_RESULT_FOLDER
+
+BARRAGE_RESULT_FOLDER = 'result/barrage'
+app.config['BARRAGE_RESULT_FOLDER'] = BARRAGE_RESULT_FOLDER
 
 basedir = os.path.dirname(os.path.abspath("__file__"))
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'JPG', 'PNG', 'gif', 'GIF', 'mp4', 'jpeg', 'JPEG'])
@@ -173,9 +189,26 @@ def delete_from_server(filename):
 @app.route('/process_sa/<string:filename>', methods=['GET'])
 def process_sa(filename):
     targetFile = os.path.join('upload', filename)
+    
+    result_dir = os.path.join(basedir, app.config['SA_RESULT_FOLDER'])
+    if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+            
     if request.method == 'GET':
+        # 定义device
+        device = torch.device('cuda:0')
+        
         data = b""
         if os.path.exists(targetFile):
+            
+#             # 把目标文件读成pil.image形式
+#             ori_img = Image.open(targetFile)
+#             # 获取sa
+#             sa_result = createSOD(ori_img, model, device)
+#             # 保存？是否需要??
+#             save_file_path = os.path.join(result_dir, filename)
+#             sa_result.save(save_file_path)
+            
             with open(targetFile, 'rb')as f:
                 data = f.read()
             # 读取原图，未处理
@@ -202,9 +235,25 @@ def process_sa(filename):
 @app.route('/process_bokeh/<string:filename>', methods=['GET'])
 def process_bokeh(filename):
     targetFile = os.path.join('upload', filename)
+    
+    result_dir = os.path.join(basedir, app.config['BOKEH_RESULT_FOLDER'])
+    if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+            
     if request.method == 'GET':
         data = b""
         if os.path.exists(targetFile):
+            
+#             # 把目标文件读成pil.image形式
+#             ori_img = Image.open(targetFile)
+#             # 获取sa
+#             sa_result = createSOD(ori_img, model, device)
+#             # 获取bokeh
+#             bokeh_result = background_blur(ori_img, sa_result)
+#             # 保存？是否需要??
+#             save_file_path = os.path.join(result_dir, filename)
+#             bokeh_result.save(save_file_path)
+            
             with open(targetFile, 'rb')as f:
                 data = f.read()
             # 读取原图，未处理
@@ -231,9 +280,26 @@ def process_bokeh(filename):
 @app.route('/process_cutout/<string:filename>', methods=['GET'])
 def process_cutout(filename):
     targetFile = os.path.join('upload', filename)
+    
+    sodForTargetFile = os.path.join('result/sa', filename)
+    
+    result_dir = os.path.join(basedir, app.config['CUTOUT_RESULT_FOLDER'])
+    if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+    
     if request.method == 'GET':
         data = b""
         if os.path.exists(targetFile):
+#             # 把目标文件读成pil.image形式
+#             ori_img = Image.open(targetFile)
+#             # 获取sa
+#             sa_result = createSOD(ori_img, model, device)
+#             # 获取cutout
+#             cutout_result = createMaskForPicture(ori_img, sa_result)
+#             # 保存为png？是否需要
+#             save_file_path = os.path.join(result_dir, filename)
+#             cutout_result.save(save_file_path)
+            
             with open(targetFile, 'rb')as f:
                 data = f.read()
             # 读取原图，未处理
@@ -261,9 +327,29 @@ def process_cutout(filename):
 def process_barrage(filename):
     # to-do https://www.runoob.com/http/http-content-type.html
     targetFile = os.path.join('upload', filename)
+    
+    result_dir = os.path.join(basedir, app.config['BARRAGE_RESULT_FOLDER'])
+    if not os.path.exists(result_dir):
+            os.makedirs(result_dir)
+    
     if request.method == 'GET':
+        # 定义device
+        device = torch.device('cuda:3')
+        
         data = b""
         if os.path.exists(targetFile):
+#             # 把目标文件读成pil.image形式
+#             ori_img = Image.open(targetFile)
+#             # 获取barrage
+#             sa_result = createSOD(ori_img, model, device)
+#             # 获取背景图？？
+#             bg_img = # ??? 
+#             #获取barrage
+#             barrage_result = background_substitution(ori_img, sa_result, bg_img)
+#             # 保存为png？是否需要
+#             save_file_path = os.path.join(result_dir, filename)
+#             barrage_result.save(save_file_path)
+            
             with open(targetFile, 'rb')as f:
                 data = f.read()
             # 读取原图，未处理
@@ -288,3 +374,26 @@ def process_barrage(filename):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=9000)
+    
+    rootDir = './imgs/'
+    resultDir = './SSRN_DUTS_v2/'
+    img1 = Image.open(os.path.join(rootDir, "2092.jpg"))
+    img2 = Image.open(os.path.join(resultDir, "2092.png"))
+    plt.imshow(img1)
+
+    #使用模型
+    if False:
+        sys.path.append("../..")
+        from saliency_pytorch.ssrnet import SSRNet
+        class ImageModel(nn.Module):
+            def __init__(self, pretrained = False):
+                super(ImageModel, self).__init__()
+                self.backbone = SSRNet(1, 16, pretrained=pretrained)
+
+            def forward(self, frame):
+                seg = self.backbone(frame)
+                return seg
+        # device = torch.device('cuda:1')
+        model = ImageModel(pretrained=True)
+        model_path = "../../saliency_pytorch/image_miou_087.pth"
+        model.load_state_dict(torch.load(model_path), strict = True)

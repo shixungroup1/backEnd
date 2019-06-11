@@ -9,30 +9,30 @@ import torch.nn as nn
 
 
 
-if __name__ == '__main__':
-#获取图片
-	rootDir = './imgs/'
-	resultDir = './SSRN_DUTS_v2/'
-	img1 = Image.open(os.path.join(rootDir, "2092.jpg"))
-	img2 = Image.open(os.path.join(resultDir, "2092.png"))
-	plt.imshow(img1)
+# if __name__ == '__main__':
+# #获取图片
+# 	rootDir = './imgs/'
+# 	resultDir = './SSRN_DUTS_v2/'
+# 	img1 = Image.open(os.path.join(rootDir, "2092.jpg"))
+# 	img2 = Image.open(os.path.join(resultDir, "2092.png"))
+# 	plt.imshow(img1)
 
-#使用模型
- 	if False:
-		sys.path.append("../..")
-		from saliency_pytorch.ssrnet import SSRNet
-		class ImageModel(nn.Module):
-		    def __init__(self, pretrained = False):
-		        super(ImageModel, self).__init__()
-		        self.backbone = SSRNet(1, 16, pretrained=pretrained)
+# #使用模型
+#  	if False:
+# 		sys.path.append("../..")
+# 		from saliency_pytorch.ssrnet import SSRNet
+# 		class ImageModel(nn.Module):
+# 		    def __init__(self, pretrained = False):
+# 		        super(ImageModel, self).__init__()
+# 		        self.backbone = SSRNet(1, 16, pretrained=pretrained)
 		    
-		    def forward(self, frame):
-		        seg = self.backbone(frame)
-		        return seg
-		device = torch.device('cuda:1')
-		model = ImageModel(pretrained=True)
-		model_path = "../../saliency_pytorch/image_miou_087.pth"
-		model.load_state_dict(torch.load(model_path), strict = True)
+# 		    def forward(self, frame):
+# 		        seg = self.backbone(frame)
+# 		        return seg
+# 		device = torch.device('cuda:1')
+# 		model = ImageModel(pretrained=True)
+# 		model_path = "../../saliency_pytorch/image_miou_087.pth"
+# 		model.load_state_dict(torch.load(model_path), strict = True)
 
 
 

@@ -29,5 +29,6 @@
    * upload：上传的图片会被保存在此文件夹中
    * server.py：server api文件，可运行
    * strUtil.py：辅助文件
+   * utils.py: 网络函数文件
 
    
