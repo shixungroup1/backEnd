@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
 #使用模型
  	if False:
-		sys.path.append("../..")
+		#sys.path.append("../..")
 		from saliency_pytorch.ssrnet import SSRNet
 		class ImageModel(nn.Module):
 		    def __init__(self, pretrained = False):
@@ -31,7 +31,7 @@ if __name__ == '__main__':
 		        return seg
 		device = torch.device('cuda:1')
 		model = ImageModel(pretrained=True)
-		model_path = "../../saliency_pytorch/image_miou_087.pth"
+		model_path = "./saliency_pytorch/image_miou_087.pth"
 		model.load_state_dict(torch.load(model_path), strict = True)
 
 
@@ -56,11 +56,18 @@ def createSOD(ori_img, model, device):
     print(np.array(ori_img))
     model.eval()
     model.to(device)
-    img = torch.tensor(np.array(ori_img))
-    img = img.type(torch.FloatTensor)
+    preTransform = T.Compose([
+        T.Scale(224),
+        T.CenterCrop(224),
+        T.ToTensor(),
+        T.Normalize((0.4924044, 0.47831464, 0.44143882), (0.25063434, 0.2492162,  0.26660094))
+        ])
+    img = preTransform(ori_img) 
+    #img = torch.tensor(np.array(ori_img))
+    #img = img.type(torch.FloatTensor)
     img = img.to(device)
     img = img.unsqueeze(0)
-    img = img.permute(0, 3, 1, 2)
+    #img = img.permute(0, 3, 1, 2)
     print(img.shape)
     result = model(img)
     
@@ -73,7 +80,6 @@ def createSOD(ori_img, model, device):
     plt.imshow(result)
     result = Image.fromarray(np.uint8(result))
     return result
-    
     
 
 
@@ -245,6 +251,32 @@ def background_substitution(ori_img, sod_img, background_img, maxThreshold = 180
     if ran <= 0:
         return img1
     shape = img_dilate.shape
+    hsv = cv2.cvtColor(img3, cv2.COLOR_BGR2HSV)
+    hsv2 = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
+    mean1 = np.mean(np.mean(hsv, axis = 0),axis = 0)
+    mean2 = np.mean(np.mean(hsv2, axis = 0),axis = 0)
+    print(mean1)
+    hsv3 = hsv[:,:,2]
+    hsv4 = hsv2[:,:,2]
+    std1 = np.std(hsv3)
+    std2 = np.std(hsv4)
+    print(std1)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            hsv[i][j][2] = (hsv[i][j][2]-mean2[2]) / std2 * std1 + mean1[2]
+    img1 = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
+            
+    """for i in range(shape[0]):
+        for j in range(shape[1]):
+            mean1 += hsv[i][j][2]
+            mean2 += hsv2[i][j][2]
+    mean1 = mean1/(shape[0]*shape[1])
+    mean2 = mean2/(shape[0]*shape[1])
+    for i in range(shape[0]):
+        for j in range(shape[1]):          
+            std1 += (hsv[i][j][2] - mean1)**2
+            std2 += (hsv2[i][j][2] - mean1)**2
+    std1 = std1 ** 0.5"""    
     for i in range(shape[0]):
         for j in range(shape[1]):
             if img_dilate[i][j] == 0:
@@ -257,8 +289,11 @@ def background_substitution(ori_img, sod_img, background_img, maxThreshold = 180
                     #print(p)
                     img1[i][j][0] = (1 - p) * img3[i][j][0]  + p * img1[i][j][0]
                     img1[i][j][1] = (1 - p) * img3[i][j][1]  + p * img1[i][j][1]
-                    img1[i][j][2] = (1 - p) * img3[i][j][2]  + p * img1[i][j][2]                
+                    img1[i][j][2] = (1 - p) * img3[i][j][2]  + p * img1[i][j][2]  
+    
+    
     img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
     result = Image.fromarray(np.uint8(img1))
     return result
+
 
