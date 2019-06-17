@@ -6,36 +6,46 @@ import cv2
 import sys
 import torch
 import torch.nn as nn
-
+from torchvision import transforms as T
+from saliency_pytorch.ssrnet import SSRNet
 
 
 # if __name__ == '__main__':
-# #获取图片
-# 	rootDir = './imgs/'
-# 	resultDir = './SSRN_DUTS_v2/'
-# 	img1 = Image.open(os.path.join(rootDir, "2092.jpg"))
-# 	img2 = Image.open(os.path.join(resultDir, "2092.png"))
-# 	plt.imshow(img1)
+#     #获取图片
+#     rootDir = './imgs/'
+#     resultDir = './SSRN_DUTS_v2/'
+#     img1 = Image.open(os.path.join(rootDir, "2092.jpg"))
+#     img2 = Image.open(os.path.join(resultDir, "2092.png"))
+#     plt.imshow(img1)
 
-# #使用模型
-#  	if False:
-# 		sys.path.append("../..")
-# 		from saliency_pytorch.ssrnet import SSRNet
-# 		class ImageModel(nn.Module):
-# 		    def __init__(self, pretrained = False):
-# 		        super(ImageModel, self).__init__()
-# 		        self.backbone = SSRNet(1, 16, pretrained=pretrained)
-		    
-# 		    def forward(self, frame):
-# 		        seg = self.backbone(frame)
-# 		        return seg
-# 		device = torch.device('cuda:1')
-# 		model = ImageModel(pretrained=True)
-# 		model_path = "../../saliency_pytorch/image_miou_087.pth"
-# 		model.load_state_dict(torch.load(model_path), strict = True)
+#     #使用模型
+#     if True:
+#         #sys.path.append("../..")
+#         from saliency_pytorch.ssrnet import SSRNet
+#         class ImageModel(nn.Module):
+#             def __init__(self, pretrained = False):
+#                 super(ImageModel, self).__init__()
+#                 self.backbone = SSRNet(1, 16, pretrained=pretrained)
+
+#             def forward(self, frame):
+#                 seg = self.backbone(frame)
+#                 return seg
+#         device = torch.device('cuda:1')
+#         model = ImageModel(pretrained=True)
+#         # model_path = "./saliency_pytorch/image_miou_087.pth"
+#         model_path = "../../saliency_pytorch/image_miou_087.pth"
+#         model.load_state_dict(torch.load(model_path), strict = True)
 
 
+class ImageModel(nn.Module):
+    def __init__(self, pretrained = False):
+        super(ImageModel, self).__init__()
+        self.backbone = SSRNet(1, 16, pretrained=pretrained)
 
+    def forward(self, frame):
+        seg = self.backbone(frame)
+        seg = torch.sigmoid(seg)
+        return seg
 
 
 """获取显著性结果图地函数
@@ -53,27 +63,36 @@ createSOD(img1, model, device)
 单通道的pil.image图片
 """
 def createSOD(ori_img, model, device):
-    print(np.array(ori_img))
+    # print(np.array(ori_img))
+    w, h = ori_img.size
+    ori_img = ori_img.convert('RGB')
     model.eval()
     model.to(device)
-    img = torch.tensor(np.array(ori_img))
-    img = img.type(torch.FloatTensor)
+    preTransform = T.Compose([
+        T.Resize(320),
+        #T.CenterCrop(224),
+        T.ToTensor(),
+        T.Normalize((0.4924044, 0.47831464, 0.44143882), (0.25063434, 0.2492162,  0.26660094))
+        ])
+    img = preTransform(ori_img) 
+    # img = torch.tensor(np.array(ori_img))
+    # img = img.type(torch.FloatTensor)
     img = img.to(device)
     img = img.unsqueeze(0)
-    img = img.permute(0, 3, 1, 2)
-    print(img.shape)
+    #i mg = img.permute(0, 3, 1, 2)
+    # print(img.shape)
     result = model(img)
     
-    #result = result.permute(0, 2, 3, 1)
+    # result = result.permute(0, 2, 3, 1)
     result = result.squeeze().squeeze()
-    print(result.shape)
-    result = result.detach().cpu().numpy()
-    print(result)
-    result = np.maximum(result, 0) 
-    plt.imshow(result)
-    result = Image.fromarray(np.uint8(result))
-    return result
     
+    result = result.detach().cpu().numpy()
+    # print(result)
+    result *= 255
+    result = cv2.resize(result, dsize=(w, h))
+    # plt.imshow(result)
+    # result = Image.fromarray(np.uint8(result))
+    return result
     
 
 
@@ -92,13 +111,15 @@ img1 = Image.open(os.path.join(rootDir, "119082.jpg"))
 img2 = Image.open(os.path.join(resultDir, "119082.png"))
 createMaskForPicture(img1, img2, 100, True);
 """
-def createMaskForPicture(ori_img, sod_img, threshold=150, smooth = True):
+def createMaskForPicture(ori_img, sod_img, threshold=100, smooth = True):
     ori_img = ori_img.convert('RGBA')
     img1 = np.array(ori_img)
+    img1 = cv2.cvtColor(img1, cv2.COLOR_RGBA2BGRA)
     img2 = np.array(sod_img)
     if smooth:
         img2 =  cv2.GaussianBlur(img2, (25, 25), 0)
-    #plt.imshow(img2)
+    # plt.imshow(img2)
+    # img2 = imfill(img2, threshold)
     img2 = erodeDialate(img2,threshold, 5)
     
     cnt = 0
@@ -110,8 +131,37 @@ def createMaskForPicture(ori_img, sod_img, threshold=150, smooth = True):
             else:
                 maxl = max(maxl,  img2[i][j])
                 #cnt+=1
-    result = Image.fromarray(np.uint8(img1))
-    #plt.imshow(result)
+    
+    #result = Image.fromarray(np.uint8(img1))
+    result = img1
+    # plt.imshow(result)
+    return result
+
+
+"""抠图
+参数：
+ori_img   ：输入的原图片，一般是pil.image形式。
+sod_img   ：原图片的显著性分析结果，一般是pil.image形式。
+threshold ：图片抠图阈值，阈值越大，被认为是前景的像素就越少，默认值为150。
+smooth    ：是否开启边缘平滑，默认值为False。
+
+返回
+具有rgba通道的pil.image图片，可以存为png。
+
+示例；
+img1 = Image.open(os.path.join(rootDir, "119082.jpg"))
+img2 = Image.open(os.path.join(resultDir, "119082.png"))
+createMaskForPicture(img1, img2, 100, True);
+"""
+def barrage(ori_img, sod_img, threshold=100, smooth = True):
+    img2 = np.array(sod_img)
+    if smooth:
+        img2 = cv2.GaussianBlur(img2, (25, 25), 0)
+    # plt.imshow(img2)
+    img2 = erodeDialate(img2,threshold, 5)
+    #result = Image.fromarray(np.uint8(img1))
+    result = img2
+    # plt.imshow(result)
     return result
 
 #背景虚化辅助函数，无需调用
@@ -183,14 +233,15 @@ background_blur(img1, img2）
 background_blur(img1, img2, [150], [15])
 background_blur(img1, img2, [150], [7, 9])
 """
-def background_blur(ori_img, sod_img, thresholds=[150], kernel_sizes = [7], Lambda = 0):
+def background_blur(ori_img, sod_img, thresholds=[100], kernel_sizes = [7], Lambda = 0):
+    ori_img = ori_img.convert('RGB')
     img1 = cv2.cvtColor(np.asarray(ori_img),cv2.COLOR_RGB2BGR)
     img2 = np.array(sod_img)
     result = img1.copy()
 
     fg_masks = [erodeDialate(img2, threshold)< threshold for threshold in thresholds]
     
-    img1 = edgeBlur(img1, img2, max(3, 1))
+    img1 = edgeBlur(img1, img2, 100)
     #print(fg_masks)
     for i, fg_mask in enumerate(fg_masks):
         kernel_size = kernel_sizes[i]
@@ -204,11 +255,11 @@ def background_blur(ori_img, sod_img, thresholds=[150], kernel_sizes = [7], Lamb
                 result[i][j][1] += Lambda * (result[i][j][1]-img1[i][j][1])
                 result[i][j][2] += Lambda * (result[i][j][2]-img1[i][j][2])
             
-    result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+    #result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
     
     #print(result)
     #plt.imshow(result)
-    result = Image.fromarray(np.uint8(result))
+    #result = Image.fromarray(np.uint8(result))
     return result
     
     
@@ -233,6 +284,7 @@ img3 = Image.open(os.path.join(rootDir, "27059.jpg"))
 background_substitution(img1, img2, img3, 180, 40);
 """
 def background_substitution(ori_img, sod_img, background_img, maxThreshold = 180, minThreshold = 80):
+    ori_img = ori_img.convert('RGB')
     img1 = cv2.cvtColor(np.asarray(ori_img),cv2.COLOR_RGB2BGR)
     img2 = np.array(sod_img)
     img3 = np.array(background_img.resize((len(img2[0]),len(img2)), Image.ANTIALIAS))
@@ -245,6 +297,32 @@ def background_substitution(ori_img, sod_img, background_img, maxThreshold = 180
     if ran <= 0:
         return img1
     shape = img_dilate.shape
+    hsv = cv2.cvtColor(img3, cv2.COLOR_BGR2HSV)
+    hsv2 = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
+    mean1 = np.mean(np.mean(hsv, axis = 0),axis = 0)
+    mean2 = np.mean(np.mean(hsv2, axis = 0),axis = 0)
+    print(mean1)
+    hsv3 = hsv[:,:,2]
+    hsv4 = hsv2[:,:,2]
+    std1 = np.std(hsv3)
+    std2 = np.std(hsv4)
+    print(std1)
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            hsv[i][j][2] = (hsv[i][j][2]-mean2[2]) / std2 * std1 + mean1[2]
+    img1 = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
+            
+    """for i in range(shape[0]):
+        for j in range(shape[1]):
+            mean1 += hsv[i][j][2]
+            mean2 += hsv2[i][j][2]
+    mean1 = mean1/(shape[0]*shape[1])
+    mean2 = mean2/(shape[0]*shape[1])
+    for i in range(shape[0]):
+        for j in range(shape[1]):          
+            std1 += (hsv[i][j][2] - mean1)**2
+            std2 += (hsv2[i][j][2] - mean1)**2
+    std1 = std1 ** 0.5"""    
     for i in range(shape[0]):
         for j in range(shape[1]):
             if img_dilate[i][j] == 0:
@@ -257,8 +335,11 @@ def background_substitution(ori_img, sod_img, background_img, maxThreshold = 180
                     #print(p)
                     img1[i][j][0] = (1 - p) * img3[i][j][0]  + p * img1[i][j][0]
                     img1[i][j][1] = (1 - p) * img3[i][j][1]  + p * img1[i][j][1]
-                    img1[i][j][2] = (1 - p) * img3[i][j][2]  + p * img1[i][j][2]                
+                    img1[i][j][2] = (1 - p) * img3[i][j][2]  + p * img1[i][j][2]  
+    
+    
     img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
     result = Image.fromarray(np.uint8(img1))
     return result
+
 
