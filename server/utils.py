@@ -301,12 +301,12 @@ def background_substitution(ori_img, sod_img, background_img, maxThreshold = 180
     hsv2 = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
     mean1 = np.mean(np.mean(hsv, axis = 0),axis = 0)
     mean2 = np.mean(np.mean(hsv2, axis = 0),axis = 0)
-    print(mean1)
+    # print(mean1)
     hsv3 = hsv[:,:,2]
     hsv4 = hsv2[:,:,2]
     std1 = np.std(hsv3)
     std2 = np.std(hsv4)
-    print(std1)
+    # print(std1)
     for i in range(shape[0]):
         for j in range(shape[1]):
             hsv[i][j][2] = (hsv[i][j][2]-mean2[2]) / std2 * std1 + mean1[2]
@@ -337,9 +337,9 @@ def background_substitution(ori_img, sod_img, background_img, maxThreshold = 180
                     img1[i][j][1] = (1 - p) * img3[i][j][1]  + p * img1[i][j][1]
                     img1[i][j][2] = (1 - p) * img3[i][j][2]  + p * img1[i][j][2]  
     
-    
-    img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
-    result = Image.fromarray(np.uint8(img1))
+    result = img1
+    # result = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+    # result = Image.fromarray(np.uint8(img1))
     return result
 
 
