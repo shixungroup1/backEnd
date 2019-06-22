@@ -226,6 +226,40 @@ def get_video_frame(filename):
         pass
  
 
+# 获取视频帧文件夹
+@app.route('/get_video_mask/<string:filename>', methods=['GET'])
+def get_video_mask(filename):
+    
+    filepath = os.path.expanduser("/data3/yanpengxiang/datasets/DAVIS2016/results")
+   
+    tmp_folder, tmp_filename = filename.split('_')[0], filename.split('_')[1]
+    targetFile = os.path.join(filepath, tmp_folder, tmp_filename)
+    
+    if request.method == 'GET':
+        data = b""
+        if os.path.exists(targetFile):
+            with open(targetFile, 'rb')as f:
+                data = f.read()
+            # 读取原图，未处理
+            response = make_response(data)
+            
+            # 设置返回图片的类型
+            ext = filename.rsplit('.', 1)[1]
+            data_type = 'png'
+            if ext == 'jpg' or ext == 'JPG':
+                data_type = 'jpg'
+            elif ext == 'jpeg' or ext == 'JPEG':
+                data_type = 'jpeg'
+            else:
+                pass
+            response.headers['Content-Type'] = 'image/' + data_type
+            return response
+        else:
+            return jsonify({"error": 1001, "msg": "no such file"})
+    else:
+        pass
+ 
+
 # list images' names
 @app.route('/list_images', methods = ['GET'])
 def list_images():
