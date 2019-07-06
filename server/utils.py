@@ -343,3 +343,31 @@ def background_substitution(ori_img, sod_img, background_img, maxThreshold = 180
     return result
 
 
+def createGrayPicture(ori_img, sod_img, threshold=150, smooth = True):
+    ori_img = ori_img.convert('RGBA')
+    img1 = np.array(ori_img)
+    img2 = np.array(sod_img)
+    if smooth:
+        img2 =  cv2.GaussianBlur(img2, (25, 25), 0)
+    #plt.imshow(img2)
+    #img2 = imfill(img2, threshold+50)
+    img2 = erodeDialate(img2,threshold, 5)
+    
+    cnt = 0
+    maxl = 0
+    img_gray = cv2.cvtColor(img1, cv2.COLOR_RGB2GRAY)
+    for i in range(len(img2)):
+        for j in range(len(img2[0])):
+            if img2[i][j] < threshold:
+                img1[i][j][0]=img_gray[i][j]
+                img1[i][j][1]=img_gray[i][j]
+                img1[i][j][2]=img_gray[i][j]
+            else:
+                maxl = max(maxl,  img2[i][j])
+                #cnt+=1
+    result = cv2.cvtColor(img1,cv2.COLOR_RGB2BGR)
+    #result = Image.fromarray(np.uint8(img1))
+    #plt.imshow(result)
+    return result
+
+
